@@ -121,8 +121,10 @@ https://drive.google.com/file/d/1hPTmMQTswglIda4pwJGoOGIdrQnpx_7z/view?usp=drive
 - 해결: 파이썬3의 `/` 연산자는 항상 float 결과를 반환한다는 점을 확인하고, `{ratio:.2f}`로 소수점 2자리 포맷팅하여 출력함.
      
 ### **📁 증빙 자료:**
-  * [2차_AI협업캡처.pdf 첨부 완료] (첨부 후 링크)
-  * [2차과제_실행결과.jpg]
+  * [2차_AI협업캡처.pdf 첨부 완료] (https://github.com/IE-PY-2026-1/ie-py-homework-nhb0407-pixel/blob/3facc61f9f764d47d532d283d9d607de7d5a9e27/2%EC%B0%A8%20%EA%B3%BC%EC%A0%9C%20Ai%20%ED%98%91%EC%97%85.pdf)
+  * [2차과제_실행결과.jpg]<img width="587" height="777" alt="과제2 프로그램 수행 결과2" src="https://github.com/user-attachments/assets/bc8d70ec-c265-4241-8c8f-ebcb8e42c56c" /> <img width="587" height="777" alt="과제2 프로그램 수행 결과2" src="https://github.com/user-attachments/assets/fc046c47-a47f-4525-ad3d-666a5d6ce552" />
+
+
 <br>
 
 ## 🟨 [3차 과제: V3.0] 무한 루프와 메뉴 시스템 (반복문) - 향후 작성 예정
