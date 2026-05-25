@@ -192,7 +192,7 @@ https://drive.google.com/file/d/1hPTmMQTswglIda4pwJGoOGIdrQnpx_7z/view?usp=drive
 
 ---
 ### 📁 증빙 자료
-- [3차_AI협업캡처.pdf 첨부 완료] (첨부 후 링크)
+- [3차_AI협업캡처.pdf 첨부 완료] (https://github.com/IE-PY-2026-1/ie-py-homework-nhb0407-pixel/blob/main/3%EC%B0%A8%20%20%EA%B3%BC%EC%A0%9C%20Ai%20%ED%98%91%EC%97%85.pdf)
 - [3차과제_실행결과.jpg]
 - <img width="432" height="695" alt="image" src="https://github.com/user-attachments/assets/a576f2fd-3de4-496a-bbb8-b5740e8de11b" />
 <img width="402" height="558" alt="image" src="https://github.com/user-attachments/assets/d45a3441-db35-4b62-91ff-2d51cda80466" />
