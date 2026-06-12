@@ -1,61 +1,73 @@
 # =========================================================
-# [Resell-Master V3.0] 굿즈 시세 추이 분석기
+# [Resell-Master V4.0] 굿즈 시세 분석 + 다중 굿즈 + 파일 저장
 # 작성자: 남현빈
-# 핵심 기능: 기간별 시세 변화율, 상승/하락 추이,
-#            허수 시세 제거, 매수 타이밍 판단
-#            + 주차별 다중 매물 입력
+# 핵심 기능: 딕셔너리 기반 다중 굿즈 관리, 파일 입출력,
+#            이벤트 계수, 가격 예측, 추천 판매가, 구매 추천 정렬
 # =========================================================
 
 # ---------------------------------------------------------
 # [함수 정의 ①] get_trend(current, previous)
-# 현재가와 이전가를 받아 변화율(%)과 방향을 반환
 # ---------------------------------------------------------
 def get_trend(current, previous):
     rate = (current - previous) / previous * 100
     if rate > 0:
-        direction = "📈 상승"
+        return rate, "📈 상승"
     elif rate < 0:
-        direction = "📉 하락"
+        return rate, "📉 하락"
     else:
-        direction = "➡️  보합"
-    return rate, direction
+        return rate, "➡️  보합"
 
 # ---------------------------------------------------------
 # [함수 정의 ②] get_timing(latest, min_price, avg_price)
-# 최저가/평균가 기반으로 매수 타이밍 판단 후 반환
 # ---------------------------------------------------------
-def get_timing(latest_price, min_price, avg_price):
-    ratio_to_avg = (latest_price / avg_price) * 100
-    if latest_price <= min_price:
-        return "🟢 역대 최저가! 지금이 최적 매수 타이밍!"
-    elif ratio_to_avg <= 90:
-        return "🟡 평균가보다 10% 이상 저렴 — 매수 고려해볼 만해요"
-    elif ratio_to_avg <= 105:
-        return "🟠 평균가 근처 — 조금 더 지켜보세요"
+def get_timing(latest, min_price, avg_price):
+    ratio = (latest / avg_price) * 100
+    if latest <= min_price:
+        return "🟢 역대 최저가! 최적 매수 타이밍!", 100
+    elif ratio <= 90:
+        return "🟡 평균가보다 저렴 — 매수 고려", 75
+    elif ratio <= 105:
+        return "🟠 평균가 근처 — 조금 더 지켜보세요", 50
     else:
-        return "🔴 평균가보다 많이 높음 — 매수 비추천"
+        return "🔴 평균가보다 높음 — 매수 비추천", 25
 
 # ---------------------------------------------------------
-# [함수 정의 ③] get_real_avg(prices, statuses)
-# 거래완료 매물만 필터링해서 평균가 반환
+# [함수 정의 ③] get_sell_price(avg, max_price)
+# 추천 판매가 = 평균가와 최고가의 중간값 기반
 # ---------------------------------------------------------
-def get_real_avg(prices, statuses):
-    real = []
-    for i in range(len(prices)):
-        if statuses[i] == '1':          # 거래완료만
-            real.append(prices[i])
-    if len(real) == 0:
-        return 0, real
-    avg = sum(real) / len(real)
-    return avg, real                    # 평균가, 실거래 리스트 반환
+def get_sell_price(avg, max_price):
+    recommend = (avg + max_price) / 2
+    return recommend
 
 # ---------------------------------------------------------
-# [함수 정의 ④] draw_chart(labels, prices, unit_label)
-# 텍스트 막대 그래프 출력
+# [함수 정의 ④] predict_price(prices, n_months)
+# 선형 추세로 n개월 뒤 가격 예측
+# ---------------------------------------------------------
+def predict_price(prices, n_months):
+    if len(prices) < 2:
+        return prices[-1]
+    # 전체 구간 평균 변화량 계산
+    total_change = prices[len(prices)-1] - prices[0]
+    avg_change   = total_change / (len(prices) - 1)
+    predicted    = prices[len(prices)-1] + (avg_change * n_months)
+    return predicted
+
+# ---------------------------------------------------------
+# [함수 정의 ⑤] apply_event(price, event_dict, event_key)
+# 이벤트 계수를 반영한 조정 가격 반환
+# ---------------------------------------------------------
+def apply_event(price, event_dict, event_key):
+    if event_key in event_dict:
+        coefficient = event_dict[event_key]   # 딕셔너리에서 계수 조회
+        return price * coefficient
+    return price
+
+# ---------------------------------------------------------
+# [함수 정의 ⑥] draw_chart(labels, prices, unit_label)
 # ---------------------------------------------------------
 def draw_chart(labels, prices, unit_label):
     print()
-    print("  [ 📊 주차별 평균 실거래가 그래프 ]")
+    print("  [ 📊 시세 변화 그래프 ]")
     print("-----------------------------------------")
     max_p = max(prices)
     for i in range(len(prices)):
@@ -64,27 +76,60 @@ def draw_chart(labels, prices, unit_label):
         print(f"  {unit_label}{labels[i]:>2} | {bar:<20} {prices[i]:,.0f}원")
     print("-----------------------------------------")
 
+# ---------------------------------------------------------
+# [함수 정의 ⑦] save_report(goods_name, data_dict)
+# 분석 결과를 txt 파일로 저장 (14주차 파일 입출력)
+# ---------------------------------------------------------
+def save_report(goods_name, data_dict):
+    filename = f"{goods_name}_report.txt"
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(f"[{goods_name}] 시세 분석 리포트\n")
+        f.write("=" * 40 + "\n")
+        for key, value in data_dict.items():
+            f.write(f"{key}: {value}\n")
+    print(f"  💾 [{filename}] 저장 완료!")
+    return filename
+
+# ---------------------------------------------------------
+# [함수 정의 ⑧] load_report(filename)
+# 저장된 리포트 파일 불러오기 (14주차 파일 입출력)
+# ---------------------------------------------------------
+def load_report(filename):
+    try:
+        with open(filename, "r", encoding="utf-8") as f:
+            content = f.read()
+        print(content)
+    except FileNotFoundError:
+        print(f"  ❌ [{filename}] 파일이 없습니다.")
+
+
+# =========================================================
+# [이벤트 계수 딕셔너리] - 13주차 딕셔너리
+# 이벤트 종류별로 가격 변동 계수를 미리 정의
+# =========================================================
+event_coefficients = {
+    "컴백"    : 1.35,   # 컴백 시 +35% 상승
+    "월드투어": 1.20,   # 월드투어 시 +20% 상승
+    "스캔들"  : 0.75,   # 스캔들 시 -25% 하락
+    "해체"    : 0.50,   # 해체 시 -50% 하락
+    "수상"    : 1.15,   # 수상 시 +15% 상승
+    "없음"    : 1.00,   # 이벤트 없음
+}
 
 # =========================================================
 # 메인 프로그램 시작
 # =========================================================
 print("=========================================")
-print("   Goods Price Trend Analyzer V3.0")
-print("   굿즈 시세 추이 분석 + 매수 타이밍")
+print("   Goods Price Trend Analyzer V4.0")
+print("   다중 굿즈 시세 분석 + 파일 저장")
 print("=========================================")
 print()
 
 # ---------------------------------------------------------
-# [기본 정보 입력]
+# [기간 단위 선택]
 # ---------------------------------------------------------
-goods_name   = input("분석할 굿즈 이름: ")
-retail_price = int(input("정가(원): "))
-
-print()
 print("  [기간 단위 선택]")
-print("  1. 일 단위")
-print("  2. 주 단위")
-print("  3. 월 단위")
+print("  1. 일 단위  2. 주 단위  3. 월 단위")
 period_choice = input("  선택 (1/2/3): ")
 
 if period_choice == '1':
@@ -97,220 +142,184 @@ elif period_choice == '3':
     unit_label  = "Mon "
     period_name = "월"
 else:
-    print("  ⚠️  잘못된 선택. 주 단위로 설정합니다.")
     unit_label  = "Week"
     period_name = "주"
 
 count = int(input(f"  몇 {period_name}치 데이터를 입력할까요? (최소 2): "))
+n_predict = int(input(f"  몇 {period_name} 뒤 가격을 예측할까요?: "))
 
 # ---------------------------------------------------------
-# [데이터 저장용 리스트]
-# period_avgs  : 주차별 실거래 평균가 (추이 분석용)
-# period_labels: 주차 번호
-# total_real   : 전체 실거래가 모음 (전체 통계용)
-# total_fake   : 전체 허수 매물 수
+# [이벤트 안내]
 # ---------------------------------------------------------
-period_avgs   = []
-period_labels = []
-total_real    = []
-total_fake    = 0
+print()
+print("  [등록된 이벤트 계수]")
+for event, coef in event_coefficients.items():
+    print(f"    {event}: x{coef}")
 
 # =========================================================
-# [핵심] 주차별 매물 입력 루프
-# 바깥 for  : 주차 반복 (1주차 ~ N주차)
-# 안쪽 while: 해당 주차 매물 계속 추가
+# [다중 굿즈 입력]
+# portfolio = { 굿즈명: { "retail": 정가, "periods": [...] } }
+# 딕셔너리 안에 딕셔너리로 굿즈별 데이터를 완전히 분리해 관리
 # =========================================================
-for period in range(1, count + 1):
+portfolio = {}   # 전체 굿즈 포트폴리오 딕셔너리
 
+print()
+goods_count = int(input("분석할 굿즈 수: "))
+
+for g in range(1, goods_count + 1):
     print()
     print(f"=========================================")
-    print(f"  [{period}{period_name}차] 매물 입력")
-    print(f"  ※ 매물 추가 → 1  |  다음 {period_name}차로 → 2")
+    print(f"  [{g}번째 굿즈 정보 입력]")
     print(f"=========================================")
+    goods_name   = input("  굿즈 이름: ")
+    retail_price = int(input("  정가(원): "))
 
-    period_prices   = []   # 이번 주차 전체 가격
-    period_statuses = []   # 이번 주차 전체 상태
-    listing_num     = 0    # 이번 주차 매물 번호
+    # 굿즈별 데이터 딕셔너리 초기화
+    portfolio[goods_name] = {
+        "retail"      : retail_price,
+        "period_avgs" : [],
+        "period_labels": [],
+        "all_prices"  : [],
+    }
 
-    # ★ while True: 매물을 계속 입력받는 무한루프
-    while True:
-        listing_num += 1
-        print(f"\n  [{period}{period_name}차 - {listing_num}번 매물]")
-        price  = int(input("    시세(원): "))
-        status = input("    매물 상태 (1=거래완료 / 2=판매중): ")
-
-        # ★ continue: 가격 0 이하면 잘못된 입력으로 스킵
-        if price <= 0:
-            print("    ⚠️  잘못된 가격입니다. 다시 입력해주세요.")
-            listing_num -= 1    # 번호 차감 (유효 매물 아니므로)
-            continue
-
-        period_prices.append(price)
-        period_statuses.append(status)
-
-        if status == '1':
-            print(f"    ✅ 거래완료 매물 등록!")
-        else:
-            print(f"    🚫 판매중(허수) 매물 등록")
-
-        # 추가 or 다음 주차 선택
+    # ---------------------------------------------------------
+    # 주차별 가격 입력
+    # 가격 입력 → 바로 등록 / 빈칸 Enter → 다음 주차로
+    # ---------------------------------------------------------
+    for period in range(1, count + 1):
         print()
-        print(f"  ─────────────────────────────────")
-        print(f"  1. 매물 추가 입력")
-        print(f"  2. {period}{period_name}차 입력 완료 → 다음으로")
-        print(f"  ─────────────────────────────────")
-        next_action = input("  선택: ")
+        print(f"  [{goods_name}] {period}{period_name}차 — "
+              f"실거래가 입력 (빈칸 Enter = 다음 {period_name}차)")
+        print(f"  ※ 이벤트 반영 가격도 입력 가능")
 
-        # ★ break: 다음 주차로 넘어가기 선택 시 while 탈출
-        if next_action == '2':
-            print(f"  ✔️  {period}{period_name}차 입력 완료!")
-            break
-        elif next_action != '1':
-            # 잘못된 입력이면 continue로 다시 선택
-            print("  ⚠️  잘못된 선택입니다. 매물 추가로 진행합니다.")
+        period_prices = []
 
-    # ---------------------------------------------------------
-    # 이번 주차 마무리 처리
-    # get_real_avg() 함수로 허수 제거 후 평균가 계산
-    # ---------------------------------------------------------
-    avg, real_list = get_real_avg(period_prices, period_statuses)
-    fake_this      = len(period_prices) - len(real_list)
-    total_fake    += fake_this
+        while True:
+            raw = input(f"    시세(원) 또는 Enter: ")
 
-    print()
-    print(f"  [{period}{period_name}차 요약]")
-    print(f"  전체 매물    : {len(period_prices)}개")
-    print(f"  거래완료     : {len(real_list)}개  |  허수(판매중): {fake_this}개")
+            # ★ 빈칸 Enter → break로 다음 주차로
+            if raw == "":
+                if len(period_prices) == 0:
+                    print(f"    ⚠️  최소 1개 이상 입력해주세요.")
+                    continue
+                print(f"    ✔️  {period}{period_name}차 입력 완료!")
+                break
 
-    if len(real_list) == 0:
-        print(f"  ⚠️  실거래 매물 없음 — 이번 {period_name}차는 분석에서 제외됩니다.")
-    else:
-        print(f"  실거래 평균가: {avg:,.0f}원")
-        print(f"  실거래 범위  : {min(real_list):,}원 ~ {max(real_list):,}원")
-        period_avgs.append(avg)
-        period_labels.append(period)
-        total_real.extend(real_list)    # 전체 실거래 리스트에 합산
+            price = int(raw)
+
+            # ★ 0 이하 입력 방지
+            if price <= 0:
+                print("    ⚠️  잘못된 가격입니다.")
+                continue
+
+            # 이벤트 계수 적용 여부
+            print(f"    이벤트 선택: {list(event_coefficients.keys())}")
+            event_key = input("    이벤트 종류 (없으면 '없음'): ")
+            adjusted  = apply_event(price, event_coefficients, event_key)
+
+            if adjusted != price:
+                print(f"    🎯 이벤트 반영가: {adjusted:,.0f}원 "
+                      f"(원래: {price:,}원 × {event_coefficients.get(event_key, 1.0)})")
+
+            period_prices.append(adjusted)
+            portfolio[goods_name]["all_prices"].append(adjusted)
+            print(f"    ✅ {adjusted:,.0f}원 등록! "
+                  f"(이번 {period_name}차 {len(period_prices)}번째 매물)")
+
+        # 이번 주차 평균가 계산
+        if len(period_prices) > 0:
+            avg = sum(period_prices) / len(period_prices)
+            portfolio[goods_name]["period_avgs"].append(avg)
+            portfolio[goods_name]["period_labels"].append(period)
 
 
 # =========================================================
-# [전체 분석 리포트]
+# [전체 분석 리포트 + 구매 추천 정렬]
 # =========================================================
 print()
 print("=========================================")
-print(f"  [{goods_name}] 전체 시세 추이 분석 리포트")
+print("  📊 전체 굿즈 포트폴리오 분석 리포트")
 print("=========================================")
 
-if len(period_avgs) < 2:
-    print("  ❌ 분석 가능한 실거래 데이터가 부족합니다.")
-    print(f"  (최소 2개 {period_name}차의 실거래 데이터 필요)")
+# 구매 추천도 정렬용 딕셔너리
+recommendation = {}   # { 굿즈명: 추천점수 }
 
-else:
-    # 전체 통계
-    global_min = min(total_real)
-    global_max = max(total_real)
-    global_avg = sum(total_real) / len(total_real)
-    latest_avg = period_avgs[len(period_avgs) - 1]
-    oldest_avg = period_avgs[0]
-    total_rate, total_dir = get_trend(latest_avg, oldest_avg)
+for goods_name, data in portfolio.items():
+    avgs   = data["period_avgs"]
+    labels = data["period_labels"]
+    retail = data["retail"]
+    all_p  = data["all_prices"]
 
-    print(f"  정가              : {retail_price:,}원")
-    print(f"  분석 {period_name}차 수      : {len(period_avgs)}{period_name} (실거래 기준)")
-    print(f"  전체 실거래 건수  : {len(total_real)}건")
-    print(f"  허수 제거 건수    : {total_fake}건")
-    print(f"  전체 최저 실거래가: {global_min:,}원")
-    print(f"  전체 최고 실거래가: {global_max:,}원")
-    print(f"  전체 평균 실거래가: {global_avg:,.0f}원")
-    print(f"  최초 평균가       : {oldest_avg:,.0f}원")
-    print(f"  최근 평균가       : {latest_avg:,.0f}원")
-    print(f"  전체 변화율       : {total_dir} {total_rate:+.1f}%")
+    if len(avgs) < 2:
+        print(f"\n  [{goods_name}] ❌ 데이터 부족 — 분석 생략")
+        continue
 
-    # ---------------------------------------------------------
-    # [구간별 변화율] for + get_trend()
-    # ---------------------------------------------------------
+    global_min = min(all_p)
+    global_max = max(all_p)
+    global_avg = sum(all_p) / len(all_p)
+    latest     = avgs[len(avgs) - 1]
+    oldest     = avgs[0]
+    total_rate, total_dir = get_trend(latest, oldest)
+    predicted  = predict_price(avgs, n_predict)
+    sell_price = get_sell_price(global_avg, global_max)
+    timing_msg, score = get_timing(latest, global_min, global_avg)
+
+    recommendation[goods_name] = score   # 추천 점수 저장
+
     print()
-    print(f"  [ 구간별 {period_name}차 평균가 변화율 ]")
-    print("-----------------------------------------")
+    print(f"  ┌─────────────────────────────────────")
+    print(f"  │  [{goods_name}]")
+    print(f"  ├─────────────────────────────────────")
+    print(f"  │  정가          : {retail:,}원")
+    print(f"  │  최저 실거래가 : {global_min:,}원")
+    print(f"  │  최고 실거래가 : {global_max:,}원")
+    print(f"  │  평균 실거래가 : {global_avg:,.0f}원")
+    print(f"  │  전체 변화율   : {total_dir} {total_rate:+.1f}%")
+    print(f"  ├─────────────────────────────────────")
+    print(f"  │  🎯 매수 판정  : {timing_msg}")
+    print(f"  │  💰 추천 판매가: {sell_price:,.0f}원")
+    print(f"  │  🔮 {n_predict}{period_name} 뒤 예측가: {predicted:,.0f}원")
+    print(f"  └─────────────────────────────────────")
 
-    up_count   = 0
-    down_count = 0
-    flat_count = 0
-    max_up     = 0.0
-    max_down   = 0.0
+    # 구간별 변화율
+    draw_chart(labels, avgs, unit_label)
 
-    for i in range(1, len(period_avgs)):
-        rate, direction = get_trend(period_avgs[i], period_avgs[i-1])
-        print(f"  {unit_label}{period_labels[i-1]:>2} → "
-              f"{unit_label}{period_labels[i]:>2} : "
-              f"{direction} {rate:+.1f}%  "
-              f"({period_avgs[i-1]:,.0f}원 → {period_avgs[i]:,.0f}원)")
+    # 파일 저장
+    report_data = {
+        "정가"           : f"{retail:,}원",
+        "평균 실거래가"  : f"{global_avg:,.0f}원",
+        "전체 변화율"    : f"{total_dir} {total_rate:+.1f}%",
+        "매수 판정"      : timing_msg,
+        "추천 판매가"    : f"{sell_price:,.0f}원",
+        f"{n_predict}{period_name} 뒤 예측가": f"{predicted:,.0f}원",
+    }
+    save_report(goods_name, report_data)
 
-        if rate > 0:
-            up_count += 1
-            if rate > max_up:
-                max_up = rate
-        elif rate < 0:
-            down_count += 1
-            if rate < max_down:
-                max_down = rate
-        else:
-            flat_count += 1
+# ---------------------------------------------------------
+# [구매 추천 정렬] - 딕셔너리 values 기준 정렬
+# ---------------------------------------------------------
+print()
+print("=========================================")
+print("  🏆 구매 추천 순위")
+print("=========================================")
 
-    # ---------------------------------------------------------
-    # [추이 요약]
-    # ---------------------------------------------------------
-    print()
-    print("  [ 추이 요약 ]")
-    print("-----------------------------------------")
-    print(f"  📈 상승 구간 : {up_count}회  (최대 {max_up:+.1f}%)")
-    print(f"  📉 하락 구간 : {down_count}회  (최대 {max_down:+.1f}%)")
-    print(f"  ➡️  보합 구간 : {flat_count}회")
+# 추천 점수 높은 순으로 정렬
+sorted_goods = sorted(recommendation.keys(),
+                      key=lambda x: recommendation[x],
+                      reverse=True)
 
-    # 전체 추세 판단
-    if up_count > down_count and total_rate > 0:
-        trend_summary = "📈 전반적 상승세 — 팔기 좋은 시장입니다."
-    elif down_count > up_count and total_rate < 0:
-        trend_summary = "📉 전반적 하락세 — 매수 기회를 노려보세요."
-    elif up_count == down_count or abs(total_rate) <= 3.0:
-        trend_summary = "➡️  횡보 중 — 관망하며 추가 데이터를 기다리세요."
+for rank, name in enumerate(sorted_goods, 1):
+    score = recommendation[name]
+    if score >= 75:
+        badge = "🟢 강력 추천"
+    elif score >= 50:
+        badge = "🟡 보통"
     else:
-        trend_summary = "🔀 혼조세 — 단기 변동성이 높습니다."
+        badge = "🔴 비추천"
+    print(f"  {rank}위. {name:<15} {badge} (점수: {score})")
 
-    print(f"\n  종합 추세: {trend_summary}")
-
-    # ---------------------------------------------------------
-    # [텍스트 차트] draw_chart()
-    # ---------------------------------------------------------
-    draw_chart(period_labels, period_avgs, unit_label)
-
-    # ---------------------------------------------------------
-    # [매수 타이밍 판단] get_timing()
-    # ---------------------------------------------------------
-    timing = get_timing(latest_avg, global_min, global_avg)
-    ratio_to_retail = (latest_avg / retail_price) * 100
-
-    print()
-    print("  [ 🎯 매수 타이밍 판단 ]")
-    print("-----------------------------------------")
-    print(f"  최근 {period_name}차 평균 실거래가 : {latest_avg:,.0f}원")
-    print(f"  정가 대비              : {ratio_to_retail:.1f}%")
-    print(f"  판정 결과              : {timing}")
-
-    # 반등 감지 (직전 2구간 데이터 필요)
-    if len(period_avgs) >= 3:
-        last_rate, _ = get_trend(
-            period_avgs[len(period_avgs) - 1],
-            period_avgs[len(period_avgs) - 2]
-        )
-        prev_rate, _ = get_trend(
-            period_avgs[len(period_avgs) - 2],
-            period_avgs[len(period_avgs) - 3]
-        )
-        if prev_rate < 0 and last_rate > 0:
-            print(f"  🚀 직전 하락 후 반등 감지! 매수 타이밍 신호!")
-        elif prev_rate > 0 and last_rate < 0:
-            print(f"  ⚠️  직전 상승 후 하락 전환 — 매수 보류 권장")
-
-    print()
-    print("=========================================")
-    print(f"  ✨ [{goods_name}] 분석 완료!")
-    print("=========================================")
+print()
+print("=========================================")
+print("  ✨ 전체 굿즈 분석 완료!")
+print("  ※ 각 굿즈별 리포트가 txt 파일로 저장되었습니다.")
+print("=========================================")
