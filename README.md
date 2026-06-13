@@ -258,7 +258,7 @@ V3.0까지는 굿즈 하나만 분석할 수 있었는데, 실제로 수집가�
 ---
 
 ### 📁 증빙 자료
-- [4차_AI협업캡처.pdf 첨부 완료] (첨부 후 링크)
+- [4차_AI협업캡처.pdf 첨부 완료] (https://github.com/IE-PY-2026-1/ie-py-homework-nhb0407-pixel/blob/main/%EB%82%A8%ED%98%84%EB%B9%88%204%EC%B0%A8%EA%B3%BC%EC%A0%9C%20Ai%20%ED%98%91%EB%A0%A5.pdf)
 - [4차과제_실행결과.jpg]<img width="696" height="936" alt="image" src="https://github.com/user-attachments/assets/5979269e-454e-42bd-a80a-82d34af962a0" />
 
      <img width="640" height="662" alt="image" src="https://github.com/user-attachments/assets/4ecab302-1590-4305-a939-ecc2c4488285" />
